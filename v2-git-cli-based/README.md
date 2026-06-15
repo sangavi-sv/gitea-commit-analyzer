@@ -1,103 +1,203 @@
-# Gitea Metrics Analyzer Script
+# Gitea Metrics Analyzer (V2 - Git CLI Based)
 
 ## Table of Contents
-- [General Info](#general-info)
-- [Prerequisites](#prerequisites)
-- [Install Dependencies](#install-dependencies)
-    - [Configuration](#configuration)
-- [Script Workflow](#script-workflow)
-- [Usage](#usage)
 
-## General Info
-> This Python script automates the process of analyzing commits and pull requests (PRs) in a Gitea repository using Git CLI. It calculates various metrics such as commit count, lines added/deleted, PR details, and identifies the top 100 most frequently changed files. The script generates both CSV and text reports and can send an HTML email containing these reports to specified recipients.
+* [Overview](#overview)
+* [Features](#features)
+* [Prerequisites](#prerequisites)
+* [Dependencies](#dependencies)
+* [Configuration](#configuration)
+* [Workflow](#workflow)
+* [Usage](#usage)
+* [Output](#output)
+
+## Overview
+
+This Python automation tool analyzes commits and pull requests (PRs) in a Gitea repository using native Git CLI commands. Unlike the API-based implementation, this version performs repository analysis locally by cloning or updating repositories and extracting metrics directly from Git history.
+
+The tool generates detailed reports, identifies frequently modified files, tracks merged pull requests, and automatically emails the results to stakeholders.
+
+## Features
+
+* Automatically clones repositories if not available locally
+* Updates existing repositories using Git pull
+* Analyzes commits between two commit SHAs
+* Calculates:
+
+  * Total commits
+  * Total additions
+  * Total deletions
+  * Total code changes
+  * Average additions, deletions, and changes per commit
+* Identifies merged pull requests
+* Detects the largest pull request based on change volume
+* Generates:
+
+  * CSV report (Top 100 Frequently Changed Files)
+  * Text report (Commit and PR statistics)
+* Sends automated HTML email reports with attachments
+* Works using Git CLI without relying on Gitea REST APIs
 
 ## Prerequisites
-- Python 3.12
-- Git installed and accessible in system PATH
-- `config.ini` configuration file
-- `Logging_Framework.py` for logging
 
-## Install Dependencies
+* Python 3.12 or later
+* Git installed and available in the system PATH
+* Access to the target Gitea repository via SSH
+* Valid SMTP credentials for email notifications
+* `config.ini` configuration file
 
-Python libraries required (install via `pip` if not already available):
+## Dependencies
 
-```
-configparser
-ast
-csv
-subprocess
-collections
-datetime
-os
-sys
-```
+No external Python packages are required.
 
+The script uses the following Python standard libraries:
+
+* configparser
+* subprocess
+* collections
+* datetime
+* csv
+* os
+* sys
+* ast
+* smtplib
+* email
+* time
 
 ## Configuration
-The script requires a `config.ini` file with the following sections:
 
-- **gitea**:
-    - `gitea_DNS`: Gitea server DNS
-    - `local_repo_dir`: Local path to store repositories
+Create a `config.ini` file with the following sections:
 
-- **mail**:
-    - `sender_email`
-    - `sender_username`
-    - `sender_password`
-    - `smtp_server`
-    - `smtp_port`
-    - `cc_email` (list of CC recipients)
-    - `subject` (email subject)
+### Gitea Configuration
 
-- **report**:
-    - `output_dir`: Directory for generated CSV and text reports
+```ini
+[gitea]
+gitea_DNS=<gitea_server_dns>
+local_repo_dir=<local_repository_directory>
+```
 
-## Script Workflow
+### Mail Configuration
 
-1. **Read Configuration**
-    - Loads Gitea URL, repository paths, and email settings from `config.ini`.
+```ini
+[mail]
+sender_email=
+sender_username=
+sender_password=
+smtp_server=
+smtp_port=
+cc_email=
+subject=
+```
 
-2. **Set Up Logging**
-    - Initializes info and error loggers using `Logging_Framework.py`.
+### Report Configuration
 
-3. **Input from User**
-    - Repository name, base commit SHA, head commit SHA, recipient emails, and branch name.
+```ini
+[report]
+output_dir=
+```
 
-4. **Ensure Local Repository**
-    - Clones the repository if missing, or pulls latest changes for the branch.
+## Workflow
 
-5. **Compute Metrics**
-    - Counts commits, identifies merge commits (PRs), calculates additions, deletions, total changes.
-    - Finds the largest PR by total changes and number of files affected.
+### 1. Load Configuration
 
-6. **Generate Reports**
-    - CSV: Top 100 frequently changed files with URLs
-    - Text: Detailed metrics including average changes and largest PR details
+Reads repository, email, and report settings from `config.ini`.
 
-7. **Send Email**
-    - Sends an HTML email with the CSV and text reports attached.
+### 2. Accept User Inputs
 
-8. **Error Handling**
-    - Logs errors and stops execution if a critical step fails.
+Receives:
+
+* Repository Name
+* Head Commit SHA
+* Base Commit SHA
+* Recipient Email IDs
+* Branch Name
+
+### 3. Synchronize Repository
+
+* Clones the repository if it does not exist locally.
+* Pulls the latest changes if the repository already exists.
+
+### 4. Analyze Repository Metrics
+
+Calculates:
+
+* Commit Count
+* Additions
+* Deletions
+* Total Changes
+* Pull Request Count
+* Frequently Modified Files
+
+### 5. Identify Largest Pull Request
+
+Determines the pull request with the highest number of code changes and records its statistics.
+
+### 6. Generate Reports
+
+Creates:
+
+* CSV report containing the Top 100 Frequently Changed Files
+* Text report containing commit and pull request statistics
+
+### 7. Send Email Notification
+
+Builds an HTML summary email and attaches generated reports automatically.
+
+### 8. Error Handling
+
+Handles Git command failures, repository access issues, configuration errors, file generation failures, and email delivery errors.
 
 ## Usage
 
 Run the script from the terminal:
 
 ```bash
-python3.12 <script_name> <repo_name> <head_commit_id> <base_commit_id> <to_email_ids> <branch_name>
+python3 script.py <repository_name> <head_commit_sha> <base_commit_sha> <recipient_emails> <branch_name>
 ```
-Note:
-- <repo_name>: Repository name in Gitea
 
-- <base_commit_id>: SHA of the starting commit
+### Example
 
-- <head_commit_id>: SHA of the ending commit
+```bash
+python3 script.py billing-service a1b2c3d e4f5g6h "user1@example.com,user2@example.com" master
+```
 
-- <to_email_ids>: Comma-separated email ids within double quotes
+## Output
 
-- <branch_name> (optional): Branch name (default: master)
+### CSV Report
 
-> Ensure that:
-> - config.ini and Logging_Framework.py are present in the same directory.
-> - The script uses SSH URLs to clone/pull repositories and Git CLI to fetch metrics.
+Contains:
+
+* Top 100 Frequently Changed Files
+* File URLs
+* Number of Changes
+
+### Text Report
+
+Contains:
+
+* Commit Statistics
+* Pull Request Statistics
+* Average Changes Per Commit
+* Largest Pull Request Details
+
+### Email Report
+
+An HTML email containing:
+
+* Repository Information
+* Commit Metrics
+* Pull Request Metrics
+* Frequently Changed Files Summary
+* CSV and Text Report Attachments
+
+## Optimization Over V1
+
+Compared to the API-based implementation:
+
+* Eliminates dependency on Gitea REST APIs
+* Reduces network calls and API overhead
+* Uses native Git commands for faster analysis
+* Automatically manages repository cloning and synchronization
+* More scalable for large commit ranges
+* Can be adapted easily for GitHub, GitLab, Bitbucket, and other Git-based platforms
+
